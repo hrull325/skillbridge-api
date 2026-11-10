@@ -1,8 +1,9 @@
+import hashlib
 import hmac
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -19,6 +20,27 @@ router = APIRouter(prefix="/payments", tags=["Payments"])
 
 def _is_expired(invoice: Invoice) -> bool:
     return invoice.expired_at is not None and invoice.expired_at < datetime.now(timezone.utc)
+
+
+def sign_body(raw_body: bytes) -> str:
+    """HMAC-SHA256 (hex) atas raw body. Dipakai gateway untuk menandatangani, kita untuk memverifikasi."""
+    return hmac.new(
+        settings.payment_callback_secret.encode(), raw_body, hashlib.sha256
+    ).hexdigest()
+
+
+async def verify_callback_signature(
+    request: Request,
+    x_callback_signature: str | None = Header(default=None),
+) -> None:
+    # Harus RAW body (byte persis yang dikirim), bukan JSON hasil parse:
+    # spasi/urutan key yang berbeda akan menghasilkan signature berbeda.
+    raw_body = await request.body()
+    expected = sign_body(raw_body)
+    if not x_callback_signature or not hmac.compare_digest(
+        x_callback_signature.strip().lower().encode(), expected.encode()
+    ):
+        raise HTTPException(401, "Signature callback tidak valid")
 
 
 @router.post("", status_code=201, response_model=ApiResponse[PaymentOut])
@@ -68,17 +90,17 @@ def get_payment(
     return ok(payment)
 
 
-@router.post("/callback", response_model=ApiResponse[PaymentOut])
+@router.post(
+    "/callback",
+    response_model=ApiResponse[PaymentOut],
+    dependencies=[Depends(verify_callback_signature)],
+)
 def payment_callback(
     body: PaymentCallbackIn,
-    x_callback_token: str | None = Header(default=None),
     db: Session = Depends(get_db),
 ):
-    # 1) Validasi secret: tanpa ini siapa pun bisa "melunasi" invoice sendiri
-    if not x_callback_token or not hmac.compare_digest(
-        x_callback_token.encode(), settings.payment_callback_secret.encode()
-    ):
-        raise HTTPException(401, "Callback token tidak valid")
+    # 1) Signature HMAC-SHA256 atas raw body sudah diverifikasi oleh dependency di atas:
+    #    tanpa ini siapa pun bisa "melunasi" invoice sendiri.
 
     # 2) Kunci baris payment agar callback ganda tidak balapan
     payment = db.scalar(

@@ -24,7 +24,8 @@
         "module_id": "",
         "enrollment_id": "",
         "invoice_id": "",
-        "external_ref": ""
+        "external_ref": "",
+        "callback_signature": ""
       }
     },
     {
@@ -162,7 +163,7 @@
       "_id": "req_sb_08",
       "_type": "request",
       "parentId": "wrk_skillbridge",
-      "name": "08 Payment Callback (paid)",
+      "name": "08 Payment Callback (paid) - isi env callback_signature dari scripts/sign_callback.py",
       "method": "POST",
       "url": "{{ _.base_url }}/payments/callback",
       "headers": [
@@ -171,15 +172,15 @@
           "value": "application/json"
         },
         {
-          "name": "X-Callback-Token",
-          "value": "rahasia-callback-gateway"
+          "name": "X-Callback-Signature",
+          "value": "{{ _.callback_signature }}"
         }
       ],
       "authentication": {},
       "metaSortKey": 800,
       "body": {
         "mimeType": "application/json",
-        "text": "{\n  \"external_ref\": \"{{ _.external_ref }}\",\n  \"status\": \"paid\",\n  \"amount\": \"150000.00\"\n}"
+        "text": "{\"external_ref\":\"{{ _.external_ref }}\",\"status\":\"paid\",\"amount\":\"150000.00\"}"
       }
     },
     {
@@ -257,7 +258,7 @@
       "_id": "req_sb_13",
       "_type": "request",
       "parentId": "wrk_skillbridge",
-      "name": "Extra: Callback tanpa token (harapan 401)",
+      "name": "Extra: Callback tanpa signature (harapan 401)",
       "method": "POST",
       "url": "{{ _.base_url }}/payments/callback",
       "headers": [
@@ -270,7 +271,7 @@
       "metaSortKey": 1300,
       "body": {
         "mimeType": "application/json",
-        "text": "{\n  \"external_ref\": \"{{ _.external_ref }}\",\n  \"status\": \"paid\",\n  \"amount\": \"150000.00\"\n}"
+        "text": "{\"external_ref\":\"{{ _.external_ref }}\",\"status\":\"paid\",\"amount\":\"150000.00\"}"
       }
     }
   ]

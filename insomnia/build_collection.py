@@ -7,7 +7,7 @@ JSON_H = [{"name": "Content-Type", "value": "application/json"}]
 BEARER = {"type": "bearer", "token": "{{ _.token }}"}
 
 
-def req(i, name, method, path, body=None, headers=None, auth=False):
+def req(i, name, method, path, body=None, headers=None, auth=False, compact=False):
     r = {
         "_id": f"req_sb_{i:02d}", "_type": "request", "parentId": WRK,
         "name": name, "method": method, "url": "{{ _.base_url }}" + path,
@@ -15,12 +15,14 @@ def req(i, name, method, path, body=None, headers=None, auth=False):
         "metaSortKey": i * 100,
     }
     if body is not None:
-        r["body"] = {"mimeType": "application/json", "text": json.dumps(body, indent=2)}
+        # compact=True: body satu baris agar byte-nya persis sama dengan yang ditandatangani
+        text = json.dumps(body, separators=(",", ":")) if compact else json.dumps(body, indent=2)
+        r["body"] = {"mimeType": "application/json", "text": text}
         r["headers"] = JSON_H + r["headers"]
     return r
 
 
-cb = [{"name": "X-Callback-Token", "value": "rahasia-callback-gateway"}]
+cb = [{"name": "X-Callback-Signature", "value": "{{ _.callback_signature }}"}]
 reqs = [
     req(1, "01 Register", "POST", "/auth/register",
         {"full_name": "Budi Santoso", "email": "budi@mail.com", "password": "Rahasia123"}),
@@ -35,8 +37,10 @@ reqs = [
     req(7, "07 Update Progress SEBELUM bayar (harapan 403)", "PATCH",
         "/enrollments/{{ _.enrollment_id }}/progress",
         {"module_id": "{{ _.module_id }}", "status": "completed"}, auth=True),
-    req(8, "08 Payment Callback (paid)", "POST", "/payments/callback",
-        {"external_ref": "{{ _.external_ref }}", "status": "paid", "amount": "150000.00"}, headers=cb),
+    req(8, "08 Payment Callback (paid) - isi env callback_signature dari scripts/sign_callback.py",
+        "POST", "/payments/callback",
+        {"external_ref": "{{ _.external_ref }}", "status": "paid", "amount": "150000.00"},
+        headers=cb, compact=True),
     req(9, "09 My Courses (harapan status active)", "GET", "/enrollments/mycourses", auth=True),
     req(10, "10 Update Progress SETELAH bayar (harapan 200)", "PATCH",
         "/enrollments/{{ _.enrollment_id }}/progress",
@@ -44,8 +48,9 @@ reqs = [
     req(11, "Extra: Auth Me", "GET", "/auth/me", auth=True),
     req(12, "Extra: Login Admin", "POST", "/auth/login",
         {"email": "admin@skillbridge.id", "password": "Admin123!"}),
-    req(13, "Extra: Callback tanpa token (harapan 401)", "POST", "/payments/callback",
-        {"external_ref": "{{ _.external_ref }}", "status": "paid", "amount": "150000.00"}),
+    req(13, "Extra: Callback tanpa signature (harapan 401)", "POST", "/payments/callback",
+        {"external_ref": "{{ _.external_ref }}", "status": "paid", "amount": "150000.00"},
+        compact=True),
 ]
 
 resources = [
@@ -53,7 +58,8 @@ resources = [
      "description": "Koleksi praktikum SkillBridge (FastAPI)", "scope": "collection"},
     {"_id": "env_sb_base", "_type": "environment", "parentId": WRK, "name": "Base Environment",
      "data": {"base_url": "http://localhost:8000", "token": "", "course_id": "",
-              "module_id": "", "enrollment_id": "", "invoice_id": "", "external_ref": ""}},
+              "module_id": "", "enrollment_id": "", "invoice_id": "", "external_ref": "",
+              "callback_signature": ""}},
     *reqs,
 ]
 out = {"_type": "export", "__export_format": 4, "__export_date": "2026-10-23T00:00:00.000Z",

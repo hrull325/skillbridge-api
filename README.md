@@ -45,7 +45,12 @@ Student dibuat sendiri lewat `POST /auth/register`.
 Import `insomnia/SkillBridge.insomnia.json` (Application → Import).
 Alternatif: Import → From URL → `http://localhost:8000/openapi.json`.
 Nilai env (`token`, `course_id`, dst.) disalin manual dari response sebelumnya.
-Header `X-Callback-Token` di request callback harus sama dengan `PAYMENT_CALLBACK_SECRET` di `.env`.
+Callback pembayaran memakai **signature HMAC-SHA256 atas raw body** (header `X-Callback-Signature`),
+bukan token statis. Hitung signature-nya dengan:
+```bash
+python -m scripts.sign_callback '{"external_ref":"SB-XXXX","status":"paid","amount":"150000.00"}'
+```
+Tempel hasilnya ke env `callback_signature`. Body di Insomnia harus persis sama dengan teks yang ditandatangani.
 
 ## Uji otomatis (untuk instruktur / cek mandiri)
 ```bash

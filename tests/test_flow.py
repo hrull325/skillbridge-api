@@ -6,23 +6,7 @@ Jalankan  : pytest -v
 import uuid
 
 import pytest
-from fastapi.testclient import TestClient
-
-from app.config import settings
-from app.main import app
-
-client = TestClient(app)
-CALLBACK = {"X-Callback-Token": settings.payment_callback_secret}
-
-
-def auth(token: str) -> dict:
-    return {"Authorization": f"Bearer {token}"}
-
-
-def login(email: str, password: str) -> str:
-    r = client.post("/auth/login", json={"email": email, "password": password})
-    assert r.status_code == 200, r.text
-    return r.json()["data"]["access_token"]
+from tests.helpers import auth, callback, client, login
 
 
 @pytest.fixture(scope="module")
@@ -126,21 +110,21 @@ def test_full_purchase_flow(student, course):
     pay = r.json()["data"]
     assert client.post("/payments", json={"invoice_id": invoice_id, "method": "qris"}, headers=h).status_code == 409
 
-    # callback: token salah / tanpa token / nominal salah
+    # callback: tanpa signature / signature salah / nominal salah
     cb = {"external_ref": pay["external_ref"], "status": "paid", "amount": pay["amount"]}
-    assert client.post("/payments/callback", json=cb).status_code == 401
-    assert client.post("/payments/callback", json=cb, headers={"X-Callback-Token": "x"}).status_code == 401
+    assert callback(cb, signature=None).status_code == 401
+    assert callback(cb, signature="x").status_code == 401
     bad = {**cb, "amount": "1.00"}
-    assert client.post("/payments/callback", json=bad, headers=CALLBACK).status_code == 422
+    assert callback(bad).status_code == 422
     my = client.get("/enrollments/mycourses", headers=h).json()["data"]
     assert my[0]["status"] == "pending_payment"  # belum berubah
 
     # callback paid
-    r = client.post("/payments/callback", json=cb, headers=CALLBACK)
+    r = callback(cb)
     assert r.status_code == 200 and r.json()["data"]["status"] == "paid"
 
     # idempotent
-    r = client.post("/payments/callback", json=cb, headers=CALLBACK)
+    r = callback(cb)
     assert r.status_code == 200 and "sudah pernah" in r.json()["message"]
 
     my = client.get("/enrollments/mycourses", headers=h).json()["data"]
@@ -180,11 +164,7 @@ def test_failed_payment_allows_retry(student):
     d = client.post("/enrollments", json={"course_id": new["id"]}, headers=h).json()["data"]
     inv = d["invoice"]["id"]
     p1 = client.post("/payments", json={"invoice_id": inv, "method": "ewallet"}, headers=h).json()["data"]
-    r = client.post(
-        "/payments/callback",
-        json={"external_ref": p1["external_ref"], "status": "failed", "amount": p1["amount"]},
-        headers=CALLBACK,
-    )
+    r = callback({"external_ref": p1["external_ref"], "status": "failed", "amount": p1["amount"]})
     assert r.status_code == 200 and r.json()["data"]["status"] == "failed"
     r = client.post("/payments", json={"invoice_id": inv, "method": "ewallet"}, headers=h)
     assert r.status_code == 201  # boleh coba bayar lagi
