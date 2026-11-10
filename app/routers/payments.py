@@ -47,6 +47,21 @@ def create_payment(
     return ok(payment, "Pembayaran dibuat, menunggu konfirmasi gateway")
 
 
+@router.get("/{payment_id}", response_model=ApiResponse[PaymentOut])
+def get_payment(
+    payment_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(authorize_role("student")),
+):
+    payment = db.get(Payment, payment_id)
+    invoice = db.get(Invoice, payment.invoice_id) if payment else None
+    order = db.get(Order, invoice.order_id) if invoice else None
+    # 404 (bukan 403) agar tidak membocorkan keberadaan payment milik orang lain
+    if order is None or order.student_id != user.id:
+        raise HTTPException(404, "Pembayaran tidak ditemukan")
+    return ok(payment)
+
+
 @router.post("/callback", response_model=ApiResponse[PaymentOut])
 def payment_callback(
     body: PaymentCallbackIn,
