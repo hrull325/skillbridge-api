@@ -25,6 +25,7 @@
         "enrollment_id": "",
         "invoice_id": "",
         "external_ref": "",
+        "payment_id": "",
         "callback_signature": ""
       }
     },
@@ -272,6 +273,54 @@
       "body": {
         "mimeType": "application/json",
         "text": "{\"external_ref\":\"{{ _.external_ref }}\",\"status\":\"paid\",\"amount\":\"150000.00\"}"
+      }
+    },
+    {
+      "_id": "req_sb_14",
+      "_type": "request",
+      "parentId": "wrk_skillbridge",
+      "name": "Latihan 1: Get Course Modules",
+      "method": "GET",
+      "url": "{{ _.base_url }}/courses/{{ _.course_id }}/modules",
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": 1400
+    },
+    {
+      "_id": "req_sb_15",
+      "_type": "request",
+      "parentId": "wrk_skillbridge",
+      "name": "Latihan 2: Get Payment (salin payment id ke env payment_id)",
+      "method": "GET",
+      "url": "{{ _.base_url }}/payments/{{ _.payment_id }}",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 1500
+    },
+    {
+      "_id": "req_sb_16",
+      "_type": "request",
+      "parentId": "wrk_skillbridge",
+      "name": "Latihan 3: Patch Course (login sebagai instructor/admin dulu)",
+      "method": "PATCH",
+      "url": "{{ _.base_url }}/courses/{{ _.course_id }}",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 1600,
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"title\": \"REST API dengan FastAPI (Revisi)\"\n}"
       }
     }
   ]

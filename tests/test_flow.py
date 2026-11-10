@@ -23,7 +23,9 @@ def student():
 
 @pytest.fixture(scope="module")
 def course():
-    r = client.get("/courses")
+    # Pilih kursus seed berdasarkan judul (bukan data[0] yang = kursus terbaru),
+    # supaya tes tetap benar walau tes lain sudah membuat kursus baru.
+    r = client.get("/courses", params={"q": "REST API dengan FastAPI"})
     assert r.status_code == 200
     cid = r.json()["data"][0]["id"]
     detail = client.get(f"/courses/{cid}").json()["data"]

@@ -51,6 +51,11 @@ reqs = [
     req(13, "Extra: Callback tanpa signature (harapan 401)", "POST", "/payments/callback",
         {"external_ref": "{{ _.external_ref }}", "status": "paid", "amount": "150000.00"},
         compact=True),
+    req(14, "Latihan 1: Get Course Modules", "GET", "/courses/{{ _.course_id }}/modules"),
+    req(15, "Latihan 2: Get Payment (salin payment id ke env payment_id)", "GET",
+        "/payments/{{ _.payment_id }}", auth=True),
+    req(16, "Latihan 3: Patch Course (login sebagai instructor/admin dulu)", "PATCH",
+        "/courses/{{ _.course_id }}", {"title": "REST API dengan FastAPI (Revisi)"}, auth=True),
 ]
 
 resources = [
@@ -59,7 +64,7 @@ resources = [
     {"_id": "env_sb_base", "_type": "environment", "parentId": WRK, "name": "Base Environment",
      "data": {"base_url": "http://localhost:8000", "token": "", "course_id": "",
               "module_id": "", "enrollment_id": "", "invoice_id": "", "external_ref": "",
-              "callback_signature": ""}},
+              "payment_id": "", "callback_signature": ""}},
     *reqs,
 ]
 out = {"_type": "export", "__export_format": 4, "__export_date": "2026-10-23T00:00:00.000Z",

@@ -52,6 +52,19 @@ python -m scripts.sign_callback '{"external_ref":"SB-XXXX","status":"paid","amou
 ```
 Tempel hasilnya ke env `callback_signature`. Body di Insomnia harus persis sama dengan teks yang ditandatangani.
 
+## Endpoint tambahan (latihan mandiri)
+| Method | Endpoint | Akses | Fungsi |
+|--------|----------|-------|--------|
+| GET    | `/courses/{id}/modules` | publik | Modul terurut berdasarkan `position` |
+| GET    | `/payments/{id}`        | student pemilik | Status pembayaran (404 jika bukan miliknya) |
+| PATCH  | `/courses/{id}`         | instructor pemilik / admin | Ubah sebagian field kursus |
+
+Invoice kini punya `expired_at` (default 24 jam, atur lewat `INVOICE_EXPIRE_HOURS`).
+Callback `paid` untuk invoice kedaluwarsa dan pembuatan payment untuk invoice kedaluwarsa ditolak dengan 409.
+
+> **Database lama?** Kolom `invoices.expired_at` baru. Reset database (lihat bawah) atau jalankan:
+> `ALTER TABLE invoices ADD COLUMN expired_at TIMESTAMPTZ;`
+
 ## Uji otomatis (untuk instruktur / cek mandiri)
 ```bash
 pip install -r requirements-dev.txt
@@ -71,6 +84,7 @@ app/
   config.py  database.py  models.py  schemas.py  security.py  deps.py
   create_tables.py  seed.py  main.py
   routers/  auth.py  courses.py  enrollments.py  payments.py
-tests/test_flow.py
+scripts/sign_callback.py
+tests/helpers.py  test_flow.py  test_exercises.py
 insomnia/SkillBridge.insomnia.json
 ```
