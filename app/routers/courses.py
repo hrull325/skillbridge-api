@@ -8,7 +8,8 @@ from app.database import get_db
 from app.deps import authorize_role
 from app.models import Category, Course, CourseModule, User
 from app.schemas import (
-    ApiResponse, CourseCreateIn, CourseDetailOut, CourseOut, ModuleOut, ok,
+    ApiResponse, CourseCreateIn, CourseDetailOut, CourseOut, CourseUpdateIn,
+    ModuleOut, ok,
 )
 
 router = APIRouter(prefix="/courses", tags=["Courses"])
@@ -71,3 +72,27 @@ def create_course(
     db.add(course)
     db.commit()
     return ok(course, "Kursus berhasil dibuat")
+
+
+@router.patch("/{course_id}", response_model=ApiResponse[CourseOut])
+def update_course(
+    course_id: uuid.UUID,
+    body: CourseUpdateIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(authorize_role("instructor", "admin")),
+):
+    course = db.get(Course, course_id)
+    if course is None:
+        raise HTTPException(404, "Kursus tidak ditemukan")
+    # Instructor hanya boleh mengubah kursus miliknya; admin boleh semua.
+    # 403 (bukan 404): kursus ini publik, jadi keberadaannya memang bukan rahasia.
+    if user.role != "admin" and course.instructor_id != user.id:
+        raise HTTPException(403, "Anda hanya boleh mengubah kursus milik sendiri")
+
+    changes = {k: v for k, v in body.model_dump().items() if v is not None}
+    if "category_id" in changes and db.get(Category, changes["category_id"]) is None:
+        raise HTTPException(404, "Kategori tidak ditemukan")
+    for field, value in changes.items():
+        setattr(course, field, value)
+    db.commit()
+    return ok(course, "Kursus berhasil diubah")

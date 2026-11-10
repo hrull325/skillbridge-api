@@ -3,7 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Generic, Literal, TypeVar
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 T = TypeVar("T")
 
@@ -61,6 +61,22 @@ class CourseCreateIn(BaseModel):
     title: str = Field(min_length=3, max_length=150)
     description: str = ""
     price: Decimal = Field(ge=0, max_digits=12, decimal_places=2)
+
+
+class CourseUpdateIn(BaseModel):
+    """PATCH = ubah sebagian: hanya field yang dikirim yang diubah."""
+    category_id: uuid.UUID | None = None
+    title: str | None = Field(default=None, min_length=3, max_length=150)
+    description: str | None = None
+    price: Decimal | None = Field(default=None, ge=0, max_digits=12, decimal_places=2)
+    is_published: bool | None = None
+
+    @model_validator(mode="after")
+    def at_least_one_field(self):
+        # field yang dikirim sebagai null dianggap tidak dikirim
+        if not any(v is not None for v in self.model_dump().values()):
+            raise ValueError("Minimal satu field harus diisi")
+        return self
 
 
 class ModuleOut(ORMModel):
