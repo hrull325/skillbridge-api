@@ -17,6 +17,10 @@ from app.schemas import (
 router = APIRouter(prefix="/payments", tags=["Payments"])
 
 
+def _is_expired(invoice: Invoice) -> bool:
+    return invoice.expired_at is not None and invoice.expired_at < datetime.now(timezone.utc)
+
+
 @router.post("", status_code=201, response_model=ApiResponse[PaymentOut])
 def create_payment(
     body: PaymentCreateIn,
@@ -29,6 +33,8 @@ def create_payment(
         raise HTTPException(404, "Invoice tidak ditemukan")
     if invoice.status != "unpaid":
         raise HTTPException(409, "Invoice sudah dibayar atau tidak aktif")
+    if _is_expired(invoice):
+        raise HTTPException(409, "Invoice sudah kedaluwarsa")
 
     pending = db.scalar(
         select(Payment).where(Payment.invoice_id == invoice.id, Payment.status == "pending")
@@ -94,12 +100,16 @@ def payment_callback(
         db.commit()
         return ok(payment, "Pembayaran ditandai gagal")
 
-    # 5) PAID: update payment, invoice, order, enrollment secara konsisten (1 transaksi)
+    # 5) PAID: invoice yang sudah kedaluwarsa tidak boleh dilunasi
+    invoice = db.get(Invoice, payment.invoice_id)
+    if _is_expired(invoice):
+        raise HTTPException(409, "Invoice sudah kedaluwarsa, pembayaran ditolak")
+
+    # 6) Update payment, invoice, order, enrollment secara konsisten (1 transaksi)
     now = datetime.now(timezone.utc)
     payment.status = "paid"
     payment.paid_at = now
 
-    invoice = db.get(Invoice, payment.invoice_id)
     invoice.status = "paid"
     invoice.paid_at = now
 

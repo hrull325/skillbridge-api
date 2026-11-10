@@ -1,11 +1,12 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
+from app.config import settings
 from app.database import get_db
 from app.deps import authorize_role
 from app.models import (
@@ -47,6 +48,7 @@ def create_enrollment(
         order_id=order.id,
         invoice_number=f"INV-{datetime.now():%Y%m%d}-{order.id.hex[:8].upper()}",
         amount=course.price,
+        expired_at=datetime.now(timezone.utc) + timedelta(hours=settings.invoice_expire_hours),
     )
     enrollment = Enrollment(
         student_id=user.id, course_id=course.id, order_id=order.id,

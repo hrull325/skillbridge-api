@@ -123,6 +123,7 @@ class InvoiceOut(ORMModel):
     invoice_number: str
     amount: Decimal
     status: str
+    expired_at: datetime | None = None
 
 
 class EnrollmentCreatedOut(BaseModel):

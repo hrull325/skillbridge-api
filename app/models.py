@@ -89,6 +89,8 @@ class Invoice(Base):
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
     status: Mapped[str] = mapped_column(String(20), default="unpaid")
     issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    # Batas waktu bayar. Nullable agar invoice lama (sebelum kolom ini ada) tetap valid.
+    expired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 

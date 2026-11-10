@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60
     payment_callback_secret: str
+    invoice_expire_hours: int = 24
 
     @property
     def database_url(self) -> URL:
